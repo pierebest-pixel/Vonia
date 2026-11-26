@@ -82,6 +82,8 @@ function coverURL(track) {
 function art(track, cls = "art") {
   const url = coverURL(track);
   if (url) return `<div class="${cls}" style="background-image:url('${url}')"></div>`;
+  if (track && track.source === "mp4") return `<div class="${cls} has-cov">${filmCover()}</div>`;
+  if (track && !track.trackIds && track.source !== "youtube" && track.title) return `<div class="${cls} has-cov">${paintedCover(track.title, track.artist)}</div>`;
   return `<div class="${cls}" style="background:${gradientFor(track ? track.id : "x")}">${track && track.source === "youtube" ? ICON.video : track && track.source === "mp4" ? ICON.film : track && track.trackIds ? ICON.list : ICON.note}</div>`;
 }
 
@@ -182,4 +184,58 @@ async function squareImage(blob, size) {
     c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, c.width, c.height);
     return await new Promise((res) => c.toBlob(res, "image/jpeg", 0.85));
   } finally { URL.revokeObjectURL(url); }
+}
+
+// ---------- Pochettes par défaut ----------
+// Musique sans pochette : coucher de soleil peint, musicien en ombre chinoise, titre écrit au pinceau.
+// Vidéo sans image : pellicule avec le soleil vert, or et rouge.
+let coverSeq = 0;
+const coverHash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const coverFit = (t, max, base, k) => Math.min(base, max / (Math.max(5, t.length) * k));
+const coverRough = (id, seed, f, sc) => `<filter id="${id}" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="${f}" numOctaves="3" seed="${seed}"/><feDisplacementMap in="SourceGraphic" scale="${sc}"/></filter>`;
+const coverPaper = (id, seed) => `<filter id="${id}"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="3" seed="${seed}"/><feColorMatrix values="0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .12  0 0 0 .55 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>`;
+
+function paintedCover(title, artist) {
+  const k = "pc" + coverSeq++;
+  const h = coverHash(title), s = h % 89;
+  const sky = [["#f6c35b", "#e8743b", "#a33a4f", "#3b2a4f"], ["#f9d77e", "#ef8f4a", "#c9483f", "#4a2238"], ["#f4b860", "#d9603b", "#7d2e57", "#22304f"]][h % 3];
+  const ink = "#0f1f1a";
+  return `<svg class="cov" viewBox="0 0 100 100" aria-hidden="true"><defs>${coverRough("r" + k, s, 0.03, 7)}${coverRough("rr" + k, s + 5, 0.08, 3)}${coverPaper("p" + k, s)}
+    <linearGradient id="s${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky[3]}"/><stop offset=".35" stop-color="${sky[2]}"/><stop offset=".62" stop-color="${sky[1]}"/><stop offset=".72" stop-color="${sky[0]}"/></linearGradient>
+    <filter id="soft${k}"><feGaussianBlur stdDeviation="1.6"/></filter></defs>
+    <rect width="100" height="100" fill="url(#s${k})"/>
+    <g filter="url(#r${k})">${[12, 20, 28, 36, 44].map((y, i) => `<path d="M-5 ${y + (h % 5)} C20 ${y - 3} 45 ${y + 4} 70 ${y} S100 ${y + 3} 106 ${y - 1}" stroke="${sky[i % 2 ? 2 : 1]}" stroke-width="${3 + (i % 3)}" fill="none" opacity=".35" stroke-linecap="round"/>`).join("")}</g>
+    <circle cx="${30 + (h % 14)}" cy="60" r="13" fill="#fff1c4" filter="url(#soft${k})" opacity=".95"/>
+    <g filter="url(#r${k})"><path d="M-5 66 C25 63 75 64 105 66 L105 105 L-5 105Z" fill="#163c4d"/>
+      ${[70, 75, 81, 88].map((y, i) => `<path d="M${24 + i * 3 + (h % 8)} ${y} h${26 - i * 5}" stroke="#f6c35b" stroke-width="${1.3 - i * 0.2}" opacity=".8" stroke-linecap="round"/>`).join("")}
+      <path d="M-5 70 C10 60 22 58 34 66 C26 66 14 68 -5 76Z" fill="${ink}"/></g>
+    <g filter="url(#rr${k})" fill="${ink}" stroke="${ink}" stroke-linecap="round">
+      <path d="M67 78 L49 63" stroke-width="1.9" fill="none"/><path d="M48 62.2 l-3 -2.2 l1 -1.6 l3.2 2.2z" stroke-width=".6"/>
+      <ellipse cx="66" cy="80" rx="7" ry="5.3" transform="rotate(-38 66 80)" stroke="none"/><ellipse cx="70.5" cy="84" rx="8" ry="6.2" transform="rotate(-38 70.5 84)" stroke="none"/>
+      <path d="M70 58 C66 62 61 66 57 69" stroke-width="2.6" fill="none"/>
+      <path d="M71 57 C73 53 84 53 86 57 L89 72 L91 106 L67 106 L68.5 72Z" stroke="none"/>
+      <rect x="76" y="48" width="5" height="6" rx="1.5" stroke="none"/><circle cx="78.5" cy="45.5" r="4.3" stroke="none"/>
+      <path d="M71.5 44 C69.5 36.5 78 32.5 84.5 34.5 C90 36.5 90 42 87 44.5 C82 42.5 76 42.3 71.5 44Z" stroke="none"/>
+      <path d="M73 44 C71.5 49 71 54 71.8 60 M75.5 46 C74.5 51 74.4 56 75.2 61 M82.5 46 C83.6 51 84 56 83.4 61 M85.3 44.5 C87 49 87.6 54 87 59.5" stroke-width="1.7" fill="none"/>
+    </g>
+    <text x="50" y="92" text-anchor="middle" font-family="Brush, Rubik, sans-serif" font-size="${coverFit(title, 90, 15, 0.42).toFixed(1)}" fill="#fff8e6" opacity=".95">${esc(title)}</text>
+    ${artist ? `<text x="50" y="12" text-anchor="middle" font-family="Brush, Rubik, sans-serif" font-size="7" fill="#fff8e6" opacity=".85">${esc(artist)}</text>` : ""}
+    <rect width="100" height="100" filter="url(#p${k})" opacity=".55"/></svg>`;
+}
+
+function filmCover() {
+  const k = "fc" + coverSeq++;
+  const G = "#1fb25a", Y = "#ffd61f", R = "#e63a2e";
+  let rays = "";
+  for (let i = 0; i < 24; i++) {
+    const t = i / 24, h = 5 * (0.55 + 0.45 * Math.abs(Math.sin(i * 1.7)));
+    rays += `<rect x="-.6" y="${-(6 + h)}" width="1.2" height="${h}" rx=".6" fill="${t < 1 / 3 ? G : t < 2 / 3 ? Y : R}" transform="rotate(${t * 360})"/>`;
+  }
+  const holes = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<rect x="${12 + i * 10.2}" y="29" width="5" height="4" rx="1" fill="#3a3a3e"/><rect x="${12 + i * 10.2}" y="67" width="5" height="4" rx="1" fill="#3a3a3e"/>`).join("");
+  return `<svg class="cov" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><radialGradient id="bg${k}" cx=".5" cy="0" r="1.1"><stop offset="0" stop-color="#2c2c30"/><stop offset=".75" stop-color="#0b0b0c"/></radialGradient>
+    <linearGradient id="gd${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff5cc"/><stop offset=".3" stop-color="#f3c64f"/><stop offset=".55" stop-color="#a8740c"/><stop offset=".8" stop-color="#f7d675"/><stop offset="1" stop-color="#7a5006"/></linearGradient></defs>
+    <rect x="-30" width="160" height="100" fill="url(#bg${k})"/>
+    <g transform="rotate(-8 50 50)"><rect x="8" y="26" width="84" height="48" rx="4" fill="#141416" stroke="#2c2c30"/>${holes}
+      <rect x="14" y="36" width="20" height="28" rx="2" fill="#222226"/><rect x="66" y="36" width="20" height="28" rx="2" fill="#222226"/>
+      <rect x="38" y="36" width="24" height="28" rx="2" fill="#2a2010"/><g transform="translate(50 50)">${rays}<circle r="5" fill="url(#gd${k})"/></g></g></svg>`;
 }

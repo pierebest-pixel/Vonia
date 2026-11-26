@@ -1,6 +1,7 @@
 /* Vonia : style dancehall, couleurs reggae, finition iPhone */
 
 @font-face { font-family: "Anton"; src: url("../fonts/anton.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Brush"; src: url("../fonts/caveat-brush.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Rubik"; src: url("../fonts/rubik-500.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
 @font-face { font-family: "Rubik"; src: url("../fonts/rubik-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
 @font-face { font-family: "Rubik"; src: url("../fonts/rubik-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
@@ -443,3 +444,7 @@ body.has-mini main { padding-bottom: calc(var(--tabbar-h) + 96px); }
 .group-note { padding: 8px 34px 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
 .full, .vsheet { visibility: hidden; transition: transform .38s cubic-bezier(.2, .8, .2, 1), visibility 0s .38s; }
 .full.open, .vsheet.open { visibility: visible; transition: transform .38s cubic-bezier(.2, .8, .2, 1); }
+
+/* Pochettes par défaut (dessinées) */
+.has-cov { position: relative; }
+.has-cov .cov { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }

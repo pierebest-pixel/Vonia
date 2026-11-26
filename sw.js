@@ -1,5 +1,5 @@
 // Service worker de Vonia : rend l'appli disponible hors connexion.
-const APP_CACHE = "vonia-app-v3";
+const APP_CACHE = "vonia-app-v4";
 const SHELL = [
   "./",
   "index.html",
@@ -15,6 +15,7 @@ const SHELL = [
   "js/recap.js",
   "js/app.js",
   "fonts/anton.woff2",
+  "fonts/caveat-brush.woff2",
   "fonts/rubik-500.woff2",
   "fonts/rubik-600.woff2",
   "fonts/rubik-700.woff2",
