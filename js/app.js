@@ -3,6 +3,7 @@
 
 const APP_VERSION = "1.2";
 const NOTUBE_URL = "https://notube.lol/fr/youtube-app-467";
+const ANIME_URL = "https://voiranime.rip/";
 const TABS = ["ecouter", "youtube", "videos", "recap", "reglages"];
 const view = document.getElementById("view");
 
@@ -53,6 +54,7 @@ Screens.reglages = async () => {
     <div class="group">
       <button class="cell" data-notube><span class="ic" style="background:#fff;color:#0b0b0c">${ICON.out}</span>Notube<span class="val">Ouvrir dans Safari</span></button>
     </div>
+          <button class="cell" data-link="${ANIME_URL}"><span class="ic" style="background:#fff">${ICON.out}</span>AnimeSama<span class="val">Ouvrir dans Safari</span></button>
     <p class="group-note">Télécharge sur Notube, puis ajoute le fichier dans Écouter (MP3) ou Vidéos (MP4).</p>
 
     <div class="group-title">Bibliothèque</div>
@@ -128,6 +130,7 @@ async function checkUpdate() {
 view.addEventListener("click", (e) => {
   let b;
   if (e.target.closest("[data-notube]")) return openNotube();
+  if ((b = e.target.closest("[data-link]"))) { const w = window.open(b.dataset.link, "_blank"); if (w) w.opener = null; return; }
   if ((b = e.target.closest("[data-set]"))) return settingsAction(b.dataset.set);
 });
 
