@@ -448,3 +448,24 @@ body.has-mini main { padding-bottom: calc(var(--tabbar-h) + 96px); }
 /* Pochettes par défaut (dessinées) */
 .has-cov { position: relative; }
 .has-cov .cov { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* =================== Navigateur intégré =================== */
+.web { position: fixed; z-index: 35; inset: 0; background: var(--bg); display: flex; flex-direction: column; transform: translateY(100%); visibility: hidden; transition: transform .38s cubic-bezier(.2, .8, .2, 1), visibility 0s .38s; }
+.web.open { transform: none; visibility: visible; transition: transform .38s cubic-bezier(.2, .8, .2, 1); }
+.web-top { display: flex; align-items: center; gap: 4px; padding: calc(env(safe-area-inset-top) + 6px) 8px 6px; background: var(--surface); border-bottom: .5px solid var(--sep); }
+.web-title { flex: 1; min-width: 0; text-align: center; }
+.web-title b { display: block; font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.web-title span { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.web-top .iconbtn svg { width: 22px; height: 22px; }
+.web-body { flex: 1; position: relative; background: #fff; }
+.web-body iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+.web-loading, .web-blocked { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg); color: var(--muted); font-weight: 700; padding: 30px; text-align: center; }
+.web-loading { background: rgba(11, 11, 12, .92); pointer-events: none; }
+.web-loading .btn { pointer-events: auto; }
+.web-blocked .art-big { width: 76px; height: 76px; border-radius: 20px; background: var(--surface-2); display: grid; place-items: center; color: var(--gold); }
+.web-blocked .art-big svg { width: 36px; height: 36px; }
+.web-blocked h3 { font-family: var(--display); font-weight: 400; font-size: 26px; text-transform: uppercase; color: #fff; }
+.web-blocked p { font-weight: 500; line-height: 1.45; max-width: 300px; }
+.spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #333; border-top-color: var(--gold); animation: spin .8s linear infinite; }
+.web-hint { position: absolute; z-index: 3; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-radius: 16px; background: rgba(22, 22, 24, .94); color: #ddd; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); animation: up .4s both; }
+.web-hint span { flex: 1; line-height: 1.35; }

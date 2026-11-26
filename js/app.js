@@ -1,7 +1,7 @@
 // Vonia : navigation, onglet Réglages (avec le lien Notube), démarrage.
 "use strict";
 
-const APP_VERSION = "1.2";
+const APP_VERSION = "1.3";
 const NOTUBE_URL = "https://notube.lol/fr/youtube-app-467";
 const ANIME_URL = "https://voiranime.rip/";
 const TABS = ["ecouter", "youtube", "videos", "recap", "reglages"];
@@ -28,7 +28,7 @@ async function render(keepScroll = false) {
 window.addEventListener("hashchange", () => render());
 
 // ---------- Notube (depuis Réglages) ----------
-function openNotube() { window.open(NOTUBE_URL, "_blank", "noopener"); }
+function openNotube() { Web.open(NOTUBE_URL, "Notube"); }
 
 // ---------- Réglages ----------
 Screens.reglages = async () => {
@@ -52,12 +52,13 @@ Screens.reglages = async () => {
 
     <div class="group-title">Liens</div>
     <div class="group">
-      <button class="cell" data-notube><span class="ic" style="background:#fff;color:#0b0b0c">${ICON.out}</span>Notube<span class="val">Ouvrir dans Safari</span></button>
+      <button class="cell" data-notube><span class="ic" style="background:#fff;color:#0b0b0c">${ICON.out}</span>Notube<span class="val">Ouvrir</span></button>
     </div>
     <div class="group">
           <button class="cell" data-link="${ANIME_URL}"><span class="ic" style="background:#fff">${ICON.out}</span>AnimeSama<span class="val">Ouvrir dans Safari</span></button>
     </div>
-    <p class="group-note">Télécharge sur Notube, puis ajoute le fichier dans Écouter (MP3) ou Vidéos (MP4).</p>
+    <p class="group-note">Les liens s'ouvrent dans Vonia quand le site l'autorise, sinon dans Safari. Télécharge sur Notube, puis ajoute le fichier dans Écouter (MP3) ou Vidéos (MP4).</p>
+    ${Web.blockedCount ? `<div class="group"><button class="cell" data-set="webreset"><span class="ic" style="background:#3a3a3e">${ICON.refresh}</span>Réessayer d'ouvrir les sites dans Vonia<span class="val">${Web.blockedCount}</span></button></div>` : ""}
 
     <div class="group-title">Bibliothèque</div>
     <div class="group">
@@ -116,6 +117,7 @@ async function settingsAction(k) {
     setTimeout(() => location.reload(), 900);
   }
   if (k === "update") checkUpdate();
+  if (k === "webreset") { Web.reset(); toast("Les sites seront de nouveau essayés dans Vonia"); render(true); }
 }
 
 async function checkUpdate() {
@@ -132,7 +134,12 @@ async function checkUpdate() {
 view.addEventListener("click", (e) => {
   let b;
   if (e.target.closest("[data-notube]")) return openNotube();
-  if ((b = e.target.closest("[data-link]"))) { const w = window.open(b.dataset.link, "_blank"); if (w) w.opener = null; return; }
+  if ((b = e.target.closest("[data-link]"))) {
+    // Nom affiché du bouton (sans l'icône ni le texte de droite).
+    const copy = b.cloneNode(true);
+    copy.querySelectorAll(".ic, .val").forEach((x) => x.remove());
+    return Web.open(b.dataset.link, copy.textContent.trim());
+  }
   if ((b = e.target.closest("[data-set]"))) return settingsAction(b.dataset.set);
 });
 

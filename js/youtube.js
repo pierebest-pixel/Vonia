@@ -106,9 +106,8 @@ const YTube = {
     };
     const copied = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(link).then(() => true, fallback) : Promise.resolve(fallback());
     if (withNotube) {
-      const w = window.open(NOTUBE_URL, "_blank");
-      if (w) { try { w.opener = null; } catch (e) {} }
-      copied.then((ok) => toast(ok ? (w === null ? "Lien copié · ouvre Notube dans Réglages" : "Lien copié : colle-le dans Notube") : "Copie impossible"));
+      Web.open(NOTUBE_URL, "Notube");
+      copied.then((ok) => toast(ok ? "Lien copié : colle-le dans Notube" : "Copie impossible"));
     } else {
       copied.then((ok) => toast(ok ? "Lien copié" : "Copie impossible"));
     }
