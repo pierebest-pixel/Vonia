@@ -198,6 +198,7 @@ const YTPlayer = (() => {
     await Lib.saveTrack(v);
     session = { id: Date.now() * 1000 + Math.floor(Math.random() * 1000), trackId: v.id, title: v.title, artist: v.artist, genre: "", source: "youtube", at: Date.now(), seconds: 0, counted: false };
     Player.audio.pause();
+    VideoPlayer.stop();
     show();
     if (yt && yt.loadVideoById) yt.loadVideoById(v.videoId);
     else {

@@ -1,9 +1,9 @@
-// Vonia : navigation, onglets Notube et Réglages, démarrage.
+// Vonia : navigation, onglet Réglages (avec le lien Notube), démarrage.
 "use strict";
 
-const APP_VERSION = "1.0";
+const APP_VERSION = "1.1";
 const NOTUBE_URL = "https://notube.lol/fr/youtube-app-467";
-const TABS = ["ecouter", "youtube", "recap", "notube", "reglages"];
+const TABS = ["ecouter", "youtube", "videos", "recap", "reglages"];
 const view = document.getElementById("view");
 
 function currentRoute() {
@@ -26,23 +26,8 @@ async function render(keepScroll = false) {
 }
 window.addEventListener("hashchange", () => render());
 
-// ---------- Notube ----------
+// ---------- Notube (depuis Réglages) ----------
 function openNotube() { window.open(NOTUBE_URL, "_blank", "noopener"); }
-document.querySelector('.tab[data-tab="notube"]').addEventListener("click", () => openNotube());
-
-Screens.notube = () => `${header("Notube")}
-  <div class="notube-hero">
-    <span class="k">SITE EXTERNE</span>
-    <h3>Ouvrir Notube</h3>
-    <p>Le site s'ouvre dans Safari. Pour revenir, touche « Vonia » en haut à gauche de l'écran.</p>
-    <button class="btn block" data-notube>${ICON.out} Ouvrir dans Safari</button>
-  </div>
-  <div class="steps">
-    <div class="step"><div class="n" style="background:var(--green)">1</div><p>Sur Notube, colle le lien de la vidéo et télécharge le fichier.</p></div>
-    <div class="step"><div class="n" style="background:var(--gold)">2</div><p>Le fichier arrive dans l'app Fichiers de l'iPhone (dossier Téléchargements).</p></div>
-    <div class="step"><div class="n" style="background:var(--red);color:#fff">3</div><p>Reviens dans Vonia et touche « Ajouter de la musique » pour l'importer.</p></div>
-  </div>
-  <div class="center"><button class="btn ghost" data-import>${ICON.plus} Ajouter de la musique</button></div>`;
 
 // ---------- Réglages ----------
 Screens.reglages = async () => {
@@ -64,10 +49,17 @@ Screens.reglages = async () => {
       <button class="cell" data-set="ythelp"><span class="ic" style="background:#3a3a3e">${ICON.info}</span>Comment obtenir une clé</button>
     </div>
 
+    <div class="group-title">Liens</div>
+    <div class="group">
+      <button class="cell" data-notube><span class="ic" style="background:#fff;color:#0b0b0c">${ICON.out}</span>Notube<span class="val">Ouvrir dans Safari</span></button>
+    </div>
+    <p class="group-note">Télécharge sur Notube, puis ajoute le fichier dans Écouter (MP3) ou Vidéos (MP4).</p>
+
     <div class="group-title">Bibliothèque</div>
     <div class="group">
       <div class="cell"><span class="ic" style="background:var(--green)">${ICON.note}</span>Morceaux<span class="val">${Lib.files().length}</span></div>
       <div class="cell"><span class="ic" style="background:var(--red)">${ICON.video}</span>Vidéos YouTube<span class="val">${Lib.videos().length}</span></div>
+      <div class="cell"><span class="ic" style="background:var(--gold);color:#141000">${ICON.film}</span>Vidéos MP4<span class="val">${Lib.mp4s().length}</span></div>
       <div class="cell"><span class="ic" style="background:#3a3a3e">${ICON.disk}</span>Espace utilisé<span class="val">${used || "—"}</span></div>
       <div class="cell"><span class="ic" style="background:#3a3a3e">${ICON.list}</span>Écoutes enregistrées<span class="val">${fmtNum(plays.length)}</span></div>
     </div>
@@ -112,6 +104,7 @@ async function settingsAction(k) {
   }
   if (k === "clearall" && (await confirmBox("Tout effacer ? Ta musique, tes vidéos, tes playlists et tes écoutes seront supprimées.", "Tout effacer"))) {
     YTPlayer.stop();
+    VideoPlayer.stop();
     Player.audio.pause();
     try { localStorage.removeItem("vonia.resume"); } catch (e) {}
     indexedDB.deleteDatabase("vonia");

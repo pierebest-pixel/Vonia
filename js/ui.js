@@ -54,6 +54,8 @@ const ICON = {
   user: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M4 21a8 8 0 0116 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`,
   disk: `<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>`,
   share: `<svg viewBox="0 0 24 24"><path d="M12 3v13M7 8l5-5 5 5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  film: `<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2.1"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4" stroke="currentColor" stroke-width="2"/></svg>`,
+  image: `<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2.1"/><circle cx="9" cy="10" r="2" fill="currentColor"/><path d="M4 18l5-5 4 4 3-3 4 4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/></svg>`,
   close: `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>`,
   edit: `<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>`,
 };
@@ -72,7 +74,7 @@ function gradientFor(id) {
 const coverCache = new Map();
 function coverURL(track) {
   if (!track) return "";
-  if (track.thumb) return track.thumb;
+  if (track.thumb && !track.customCover) return track.thumb;
   if (!track.cover) return "";
   if (!coverCache.has(track.id)) coverCache.set(track.id, URL.createObjectURL(track.cover));
   return coverCache.get(track.id);
@@ -80,7 +82,7 @@ function coverURL(track) {
 function art(track, cls = "art") {
   const url = coverURL(track);
   if (url) return `<div class="${cls}" style="background-image:url('${url}')"></div>`;
-  return `<div class="${cls}" style="background:${gradientFor(track ? track.id : "x")}">${track && track.source === "youtube" ? ICON.video : ICON.note}</div>`;
+  return `<div class="${cls}" style="background:${gradientFor(track ? track.id : "x")}">${track && track.source === "youtube" ? ICON.video : track && track.source === "mp4" ? ICON.film : track && track.trackIds ? ICON.list : ICON.note}</div>`;
 }
 
 function toast(text, ms = 2400) {
@@ -149,3 +151,35 @@ const settings = {
   get(k, d = "") { try { const v = localStorage.getItem("vonia." + k); return v == null ? d : v; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem("vonia." + k, v); } catch (e) {} },
 };
+
+// Choisir une image (Photos ou Fichiers), recadrée en carré et allégée.
+function pickImage() {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.hidden = true;
+    document.body.appendChild(input);
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; input.remove(); resolve(v); };
+    input.addEventListener("cancel", () => finish(null));
+    input.addEventListener("change", async () => {
+      const f = input.files[0];
+      if (!f) return finish(null);
+      try { finish(await squareImage(f, 600)); } catch (e) { toast("Image illisible"); finish(null); }
+    });
+    input.click();
+  });
+}
+
+async function squareImage(blob, size) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const c = document.createElement("canvas");
+    c.width = c.height = Math.min(size, side);
+    c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, c.width, c.height);
+    return await new Promise((res) => c.toBlob(res, "image/jpeg", 0.85));
+  } finally { URL.revokeObjectURL(url); }
+}

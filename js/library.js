@@ -11,7 +11,8 @@ const Lib = {
     this.playlists = p.sort((a, b) => b.createdAt - a.createdAt);
     this.byId = Object.fromEntries(t.map((x) => [x.id, x]));
   },
-  files() { return this.tracks.filter((t) => t.source !== "youtube"); },
+  files() { return this.tracks.filter((t) => !t.source || t.source === "file"); },
+  mp4s() { return this.tracks.filter((t) => t.source === "mp4"); },
   videos() { return this.tracks.filter((t) => t.source === "youtube"); },
   lists(kind) { return this.playlists.filter((p) => (p.kind || "audio") === kind); },
   listTracks(p) { return p.trackIds.map((id) => this.byId[id]).filter(Boolean); },
@@ -28,6 +29,14 @@ const Lib = {
   async savePlaylist(p) { await DB.put("playlists", p); await this.load(); },
   async deletePlaylist(id) { await DB.del("playlists", id); await this.load(); },
 };
+
+// Trois sortes de contenus : musique (audio), vidéos YouTube (video) et vidéos MP4 (mp4).
+const KIND = {
+  audio: { tab: "ecouter", label: "", one: "titre", many: "morceaux", home: "Vonia" },
+  video: { tab: "youtube", label: "YOUTUBE", one: "vidéo", many: "vidéos", home: "YouTube" },
+  mp4: { tab: "videos", label: "VIDÉO", one: "vidéo", many: "vidéos", home: "Vidéos" },
+};
+const kindOf = (t) => (t.source === "youtube" ? "video" : t.source === "mp4" ? "mp4" : "audio");
 
 const newId = (prefix) => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
@@ -80,7 +89,7 @@ fileInput.addEventListener("change", async () => {
 
 // ---------- Menus sur un morceau ----------
 async function addToPlaylist(track) {
-  const kind = track.source === "youtube" ? "video" : "audio";
+  const kind = kindOf(track);
   const lists = Lib.lists(kind);
   const choice = await sheet("Ajouter à une playlist", [...lists.map((p) => ({ key: p.id, label: p.name })), { key: "__new", label: "+ Nouvelle playlist" }]);
   if (!choice) return;
@@ -96,7 +105,7 @@ async function addToPlaylist(track) {
 }
 
 async function createPlaylist(kind) {
-  const r = await ask("Nouvelle playlist", [{ name: "name", label: "Nom", placeholder: kind === "video" ? "Mes clips" : "Riddim du samedi" }], "Créer");
+  const r = await ask("Nouvelle playlist", [{ name: "name", label: "Nom", placeholder: kind === "audio" ? "Riddim du samedi" : "Mes clips" }], "Créer");
   if (!r || !r.name) return null;
   const p = { id: newId("p"), kind, name: r.name, trackIds: [], createdAt: Date.now() };
   await Lib.savePlaylist(p);
@@ -107,8 +116,10 @@ async function trackMenu(track, playlist) {
   const actions = [{ key: "pl", label: "Ajouter à une playlist" }];
   if (track.source === "youtube") actions.push({ key: "fav", label: track.fav ? "Retirer des favoris" : "Ajouter aux favoris" });
   actions.push({ key: "edit", label: "Modifier le titre et l'artiste" });
+  actions.push({ key: "img", label: "Changer l'image" });
+  if (track.customCover) actions.push({ key: "noimg", label: "Retirer l'image" });
   if (playlist) actions.push({ key: "out", label: "Retirer de la playlist", danger: true });
-  actions.push({ key: "del", label: track.source === "youtube" ? "Supprimer la vidéo" : "Supprimer de Vonia", danger: true });
+  actions.push({ key: "del", label: track.source === "audio" || !track.source || track.source === "file" ? "Supprimer de Vonia" : "Supprimer la vidéo", danger: true });
   const k = await sheet(track.title, actions);
   if (k === "pl") return addToPlaylist(track);
   if (k === "fav") { track.fav = !track.fav; await Lib.saveTrack(track); toast(track.fav ? "Ajouté aux favoris" : "Retiré des favoris"); return render(true); }
@@ -117,6 +128,26 @@ async function trackMenu(track, playlist) {
     if (!r) return;
     track.title = r.title || track.title;
     track.artist = r.artist;
+    await Lib.saveTrack(track);
+    Player.updateTrack(track);
+    return render(true);
+  }
+  if (k === "img") {
+    const img = await pickImage();
+    if (!img) return;
+    if (!track.customCover) track.tagCover = track.cover || null;
+    track.cover = img;
+    track.customCover = true;
+    coverCache.delete(track.id);
+    await Lib.saveTrack(track);
+    Player.updateTrack(track);
+    toast("Image changée");
+    return render(true);
+  }
+  if (k === "noimg") {
+    track.cover = track.tagCover || null;
+    track.customCover = false;
+    coverCache.delete(track.id);
     await Lib.saveTrack(track);
     Player.updateTrack(track);
     return render(true);
@@ -134,21 +165,32 @@ async function trackMenu(track, playlist) {
 }
 
 async function playlistMenu(p) {
-  const k = await sheet(p.name, [{ key: "rename", label: "Renommer" }, { key: "del", label: "Supprimer la playlist", danger: true }]);
+  const acts = [{ key: "rename", label: "Renommer" }, { key: "img", label: "Changer l'image" }];
+  if (p.cover) acts.push({ key: "noimg", label: "Retirer l'image" });
+  acts.push({ key: "del", label: "Supprimer la playlist", danger: true });
+  const k = await sheet(p.name, acts);
+  if (k === "img" || k === "noimg") {
+    const img = k === "img" ? await pickImage() : null;
+    if (k === "img" && !img) return;
+    p.cover = img;
+    coverCache.delete(p.id);
+    await Lib.savePlaylist(p);
+    return render(true);
+  }
   if (k === "rename") {
     const r = await ask("Renommer", [{ name: "name", label: "Nom", value: p.name }], "Enregistrer");
     if (r && r.name) { p.name = r.name; await Lib.savePlaylist(p); render(true); }
   }
   if (k === "del" && (await confirmBox("Supprimer « " + p.name + " » ? Les morceaux restent dans Vonia."))) {
     await Lib.deletePlaylist(p.id);
-    location.hash = p.kind === "video" ? "#/youtube" : "#/ecouter";
+    location.hash = "#/" + KIND[p.kind || "audio"].tab;
   }
 }
 
 // ---------- Morceaux à l'écran ----------
 function trackRow(t, ctx) {
   const isYT = t.source === "youtube";
-  const tag = isYT ? `<span class="tag yt">YOUTUBE</span>` : `<span class="tag off">HORS LIGNE</span>`;
+  const tag = isYT ? `<span class="tag yt">YOUTUBE</span>` : t.source === "mp4" ? `<span class="tag mp4">MP4</span>` : `<span class="tag off">HORS LIGNE</span>`;
   const sub = [t.artist, t.duration ? fmtTime(t.duration) : ""].filter(Boolean).join(" · ");
   const on = (isYT ? YTPlayer.current && YTPlayer.current.id === t.id : Player.track && Player.track.id === t.id) ? " playing" : "";
   return `<div class="trk${on}" data-id="${t.id}" data-ctx="${esc(ctx)}">${art(t)}
@@ -158,6 +200,7 @@ function trackRow(t, ctx) {
 }
 
 function mosaic(p) {
+  if (p.cover) return art(p, "mosaic");
   const ts = Lib.listTracks(p).slice(0, 4);
   if (!ts.length) return `<div class="mosaic" style="background:${gradientFor(p.id)}">${ICON.list}</div>`;
   if (ts.length < 4) return art(ts[0], "mosaic");
@@ -166,7 +209,8 @@ function mosaic(p) {
 
 function playlistCard(p) {
   const n = p.trackIds.length;
-  return `<a class="plc" href="#/${p.kind === "video" ? "youtube" : "ecouter"}/playlist/${p.id}">${mosaic(p)}<div class="t">${esc(p.name)}</div><div class="s">${n} ${p.kind === "video" ? "vidéo" : "titre"}${n > 1 ? "s" : ""}</div></a>`;
+  const K = KIND[p.kind || "audio"];
+  return `<a class="plc" href="#/${K.tab}/playlist/${p.id}">${mosaic(p)}<div class="t">${esc(p.name)}</div><div class="s">${n} ${K.one}${n > 1 ? "s" : ""}</div></a>`;
 }
 
 // Liste de lecture correspondant à l'endroit où l'on a touché le morceau.
@@ -176,6 +220,7 @@ function contextTracks(ctx) {
     return p ? Lib.listTracks(p) : [];
   }
   if (ctx === "videos") return Lib.videos();
+  if (ctx === "mp4") return Lib.mp4s();
   if (ctx === "favs") return Lib.videos().filter((v) => v.fav);
   if (ctx === "history") return YTHistory();
   if (ctx === "search") return YTSearchResults;
@@ -239,15 +284,16 @@ Screens.ecouter = (sub) => {
 
 function playlistScreen(id, kind) {
   const p = Lib.playlists.find((x) => x.id === id);
-  if (!p) return `${header(kind === "video" ? "YouTube" : "Vonia")}<p class="lead">Cette playlist n'existe plus.</p>`;
+  const K = KIND[kind];
+  if (!p) return `${header(K.home)}<p class="lead">Cette playlist n'existe plus.</p>`;
   const ts = Lib.listTracks(p);
   const total = ts.reduce((s, t) => s + (t.duration || 0), 0);
-  const backHref = kind === "video" ? "#/youtube" : "#/ecouter";
+  const backHref = "#/" + K.tab;
   return `<div class="topbar"><a class="backlink" href="${backHref}">${ICON.back} Retour</a><button class="iconbtn" data-plmenu="${p.id}">${ICON.more}</button></div>
-    <div class="plhead">${mosaic(p)}<div><div class="k">PLAYLIST ${kind === "video" ? "YOUTUBE" : ""}</div><h1 class="pltitle">${esc(p.name)}</h1><div class="s">${ts.length} ${kind === "video" ? "vidéo" : "titre"}${ts.length > 1 ? "s" : ""}${total ? " · " + fmtDuration(total) : ""}</div></div></div>
+    <div class="plhead">${mosaic(p)}<div><div class="k">PLAYLIST ${K.label}</div><h1 class="pltitle">${esc(p.name)}</h1><div class="s">${ts.length} ${K.one}${ts.length > 1 ? "s" : ""}${total ? " · " + fmtDuration(total) : ""}</div></div></div>
     ${ts.length ? `<div class="actions"><button class="btn" data-playall="pl:${p.id}">${ICON.play} Lire</button><button class="btn ghost" data-shuffle="pl:${p.id}">${ICON.shuffle} Aléatoire</button></div>
     <div class="list">${ts.map((t) => trackRow(t, "pl:" + p.id)).join("")}</div>`
-    : `<p class="lead">Playlist vide. Ajoute des ${kind === "video" ? "vidéos" : "morceaux"} avec le bouton ⋯ à côté de chaque titre.</p>`}`;
+    : `<p class="lead">Playlist vide. Ajoute des ${K.many} avec le bouton ⋯ à côté de chaque titre.</p>`}`;
 }
 Screens.playlistScreen = playlistScreen;
 
@@ -261,6 +307,8 @@ function playFrom(ctx, id, opts = {}) {
   }
   YTPlayer.stop();
   const i = Math.max(0, list.findIndex((t) => t.id === id));
+  if (list[0].source !== "mp4") VideoPlayer.stop();
+  if (list[0].source === "mp4") return VideoPlayer.open(opts.shuffle ? list.slice().sort(() => Math.random() - 0.5) : list, opts.shuffle ? 0 : i);
   Player.playList(list, i, opts);
 }
 

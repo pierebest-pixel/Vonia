@@ -83,8 +83,8 @@ const Recap = (() => {
     const ago = last ? Math.round((Date.now() - last) / 60000) : null;
     const upd = ago == null ? "en attente" : ago < 1 ? "à l'instant" : `il y a ${ago < 60 ? ago + " min" : Math.round(ago / 60) + " h"}`;
     const top = min >= 1 ? `Top ${clamp(Math.round(45 * Math.exp(-min / 45)), 1, 45)}%` : "—";
-    const now = YTPlayer.current || Player.track;
-    const playing = YTPlayer.current || Player.playing;
+    const now = VideoPlayer.current || YTPlayer.current || Player.track;
+    const playing = VideoPlayer.current || YTPlayer.current || Player.playing;
     const count = now && st.tracks[now.id] ? st.tracks[now.id].plays : 0;
     return `<div class="live" id="live"><div class="hd"><span class="dot"></span>ACTUELLEMENT</div><div class="upd">${upd}</div>
       <div class="tt">Aujourd'hui</div>
