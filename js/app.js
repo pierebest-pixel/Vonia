@@ -54,7 +54,9 @@ Screens.reglages = async () => {
     <div class="group">
       <button class="cell" data-notube><span class="ic" style="background:#fff;color:#0b0b0c">${ICON.out}</span>Notube<span class="val">Ouvrir dans Safari</span></button>
     </div>
+    <div class="group">
           <button class="cell" data-link="${ANIME_URL}"><span class="ic" style="background:#fff">${ICON.out}</span>AnimeSama<span class="val">Ouvrir dans Safari</span></button>
+    </div>
     <p class="group-note">Télécharge sur Notube, puis ajoute le fichier dans Écouter (MP3) ou Vidéos (MP4).</p>
 
     <div class="group-title">Bibliothèque</div>
