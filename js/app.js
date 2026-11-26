@@ -1,7 +1,7 @@
 // Vonia : navigation, onglet Réglages (avec le lien Notube), démarrage.
 "use strict";
 
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 const NOTUBE_URL = "https://notube.lol/fr/youtube-app-467";
 const TABS = ["ecouter", "youtube", "videos", "recap", "reglages"];
 const view = document.getElementById("view");

@@ -86,9 +86,38 @@ const YTube = {
     render(true);
   },
 
+  url(v) { return "https://www.youtube.com/watch?v=" + v.videoId; },
+
+  // Copie le lien de la vidéo ; avec withNotube, ouvre aussi Notube pour le coller.
+  copyLink(v, withNotube) {
+    const link = YTube.url(v);
+    const fallback = () => {
+      const ta = document.createElement("textarea");
+      ta.value = link;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;opacity:0;top:0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, link.length);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) {}
+      ta.remove();
+      return ok;
+    };
+    const copied = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(link).then(() => true, fallback) : Promise.resolve(fallback());
+    if (withNotube) {
+      const w = window.open(NOTUBE_URL, "_blank");
+      if (w) { try { w.opener = null; } catch (e) {} }
+      copied.then((ok) => toast(ok ? (w === null ? "Lien copié · ouvre Notube dans Réglages" : "Lien copié : colle-le dans Notube") : "Copie impossible"));
+    } else {
+      copied.then((ok) => toast(ok ? "Lien copié" : "Copie impossible"));
+    }
+  },
+
   async resultMenu(v) {
-    const k = await sheet(v.title, [{ key: "fav", label: "Ajouter aux favoris" }, { key: "pl", label: "Ajouter à une playlist" }]);
+    const k = await sheet(v.title, [{ key: "copy", label: "Copier le lien" }, { key: "notube", label: "Copier le lien et ouvrir Notube" }, { key: "fav", label: "Ajouter aux favoris" }, { key: "pl", label: "Ajouter à une playlist" }]);
     if (!k) return;
+    if (k === "copy" || k === "notube") return YTube.copyLink(v, k === "notube");
     const kept = await YTube.keep(v);
     if (k === "fav") { kept.fav = true; await Lib.saveTrack(kept); toast("Ajouté aux favoris"); render(true); }
     if (k === "pl") addToPlaylist(kept);

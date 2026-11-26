@@ -114,7 +114,10 @@ async function createPlaylist(kind) {
 
 async function trackMenu(track, playlist) {
   const actions = [{ key: "pl", label: "Ajouter à une playlist" }];
-  if (track.source === "youtube") actions.push({ key: "fav", label: track.fav ? "Retirer des favoris" : "Ajouter aux favoris" });
+  if (track.source === "youtube") {
+    actions.unshift({ key: "copy", label: "Copier le lien" }, { key: "notube", label: "Copier le lien et ouvrir Notube" });
+    actions.push({ key: "fav", label: track.fav ? "Retirer des favoris" : "Ajouter aux favoris" });
+  }
   actions.push({ key: "edit", label: "Modifier le titre et l'artiste" });
   actions.push({ key: "img", label: "Changer l'image" });
   if (track.customCover) actions.push({ key: "noimg", label: "Retirer l'image" });
@@ -122,6 +125,7 @@ async function trackMenu(track, playlist) {
   actions.push({ key: "del", label: track.source === "audio" || !track.source || track.source === "file" ? "Supprimer de Vonia" : "Supprimer la vidéo", danger: true });
   const k = await sheet(track.title, actions);
   if (k === "pl") return addToPlaylist(track);
+  if (k === "copy" || k === "notube") return YTube.copyLink(track, k === "notube");
   if (k === "fav") { track.fav = !track.fav; await Lib.saveTrack(track); toast(track.fav ? "Ajouté aux favoris" : "Retiré des favoris"); return render(true); }
   if (k === "edit") {
     const r = await ask("Modifier", [{ name: "title", label: "Titre", value: track.title }, { name: "artist", label: "Artiste", value: track.artist }], "Enregistrer");
